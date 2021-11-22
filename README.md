@@ -7,9 +7,9 @@ This uses the [`screeps-game-api`] bindings from the [rustyscreeps] organization
 It's also recommended to use [`cargo-screeps`] for uploading the code.
 
 The documentation is currently a bit sparse. API docs which list functions one
-can use are located at https://docs.rs/screeps-game-api/.
+can use are located at <https://docs.rs/screeps-game-api/>.
 
-Almost all crates on https://crates.io/ are usable (only things which interact with OS
+Almost all crates on <https://crates.io/> are usable (only things which interact with OS
 apis are broken).
 
 Quickstart:

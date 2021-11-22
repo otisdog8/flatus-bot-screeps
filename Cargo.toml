@@ -1,5 +1,5 @@
 [package]
-name = "screeps-starter-rust"
+name = "flatus-bot-screeps"
 version = "0.0.0"
 authors = []
 edition = "2021"
@@ -17,9 +17,10 @@ screeps-game-api = { git = "https://github.com/rustyscreeps/screeps-game-api.git
 #screeps-game-api = "0.10"
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["console"] }
-rkyv = "0.7.20"
+rkyv = {version = "0.7.20", features=["validation"]}
 rkyv_dyn = "0.7.20"
 rkyv_typename = "0.7.20"
+bytecheck = "0.6.5"
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
@@ -36,6 +37,7 @@ lto = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-O4"]
+target = "web"
 
 [features]
 default = ["console_error_panic_hook"]

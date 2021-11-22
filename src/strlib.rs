@@ -118,7 +118,9 @@ fn bytestring_to_utf15(bytes: &[u8]) -> Vec<u16> {
 #[wasm_bindgen]
 pub fn bytestring_to_jsstring(bytes: &[u8]) -> JsString {
     let utf15 = bytestring_to_utf15(bytes);
-    utf16_to_jsstring(utf15.as_slice())
+    unsafe {
+        utf16_to_jsstring(utf15.as_slice())
+    }
 }
 
 #[inline(always)]
@@ -148,7 +150,9 @@ pub fn jsstring_to_bytestring(utf15: &JsString) -> Vec<u8> {
     assert_eq!(utf15.length() % OUTPUT_BLOCK_SIZE as u32, 1);
 
     let mut utf15_vec: Vec<u16> = vec![0; utf15.length().try_into().unwrap()];
-    jsstring_to_utf16(&utf15, utf15_vec.as_mut_slice()).unwrap();
+    unsafe {
+        jsstring_to_utf16(&utf15, utf15_vec.as_mut_slice()).unwrap();
+    }
     let first = utf15_vec[0];
     assert!(first == 0x0030 || first == 0x0031);
     let utf15_vec = &utf15_vec[1..];

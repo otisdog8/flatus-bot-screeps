@@ -8,6 +8,9 @@ function console_error(...args) {
 
 module.exports.loop = function() {
     try {
+        delete global.Memory
+        global.Memory = {}
+        delete RawMemory._parsed
         if (wasm_module && wasm_module.__wasm) {
             wasm_module.loop();
         } else {
@@ -18,7 +21,7 @@ module.exports.loop = function() {
             }
 
             // replace this initialize function on the module
-            wasm_module = require("screeps-starter-rust");
+            wasm_module = require("flatus-bot-screeps");
             // load the wasm instance!
             wasm_module.initialize_instance();
             // run the setup function, which configures logging
