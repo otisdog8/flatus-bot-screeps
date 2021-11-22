@@ -16,6 +16,7 @@ use wasm_bindgen::prelude::*;
 mod logging;
 mod memory;
 mod strlib;
+mod refcell_serialization;
 
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]
@@ -27,8 +28,6 @@ pub fn setup() {
 // to use a reserved name as a function name, use `js_name`:
 #[wasm_bindgen(js_name = loop)]
 pub fn game_loop() {
-    // mutably borrow the creep_targets refcell, which is holding our creep target locks
-    // in the wasm heap
 
     // Game::spawns returns a `js_sys::Object`, which is a light reference to an
     // object of any kind which is held on the javascript heap.
