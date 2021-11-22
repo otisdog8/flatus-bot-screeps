@@ -40,36 +40,19 @@ pub struct MemoryB {
 // CURRENT MEMORY VERSION IS B
 const MIGRATE: bool = false;
 
-// Macro to automatically run with the current memory version
+// Function to return current memory version
 // Requires borrow as the instance of Memory, will put memory_var in scope as MemoryB
-#[macro_export]
-macro_rules! mem {
-    ( $borrow:ident, $code: block) => {
-        {
-            match $borrow {
-                crate::memory::Memory::A(memory_var) => (),
-                crate::memory::Memory::B(memory_var) => {
-                    $code;
-                }
-            }
+pub fn get_memory(borrow: &Memory) -> &MemoryB {
+    match borrow {
+        Memory::A(a) => {
+            // Memory should never be a MemoryA
+            panic!("DN");
+        },
+        Memory::B(b) => {
+            b
         }
-    };
+    }
 }
-
-#[macro_export]
-macro_rules! mem2 {
-    ( $borrow:ident) => {
-        {
-            match $borrow {
-                crate::memory::Memory::A(memory_var) => (),
-                crate::memory::Memory::B(memory_var) => {
-                    memory_var
-                }
-            }
-        }
-    };
-}
-
 
 // -1 for cold boot, 0 for normal
 pub fn init() -> u8 {
@@ -93,11 +76,9 @@ pub fn init() -> u8 {
                     memory_refcell.replace(Memory::B(MemoryB { test: new_test, test2: RefCell::new(new_test as u16) }));
                 });
             }
-            Memory::B(old_memory) => {
-                let old_test = old_memory.test;
-                let new_test = old_test as u32;
+            Memory::B(_) => {
                 MEMORY.with(|memory_refcell| {
-                    memory_refcell.replace(Memory::A(MemoryA { test: new_test }));
+                    memory_refcell.replace(deserialized_memory);
                 });
             }
         }
