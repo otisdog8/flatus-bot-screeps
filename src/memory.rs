@@ -40,6 +40,37 @@ pub struct MemoryB {
 // CURRENT MEMORY VERSION IS B
 const MIGRATE: bool = false;
 
+// Macro to automatically run with the current memory version
+// Requires borrow as the instance of Memory, will put memory_var in scope as MemoryB
+#[macro_export]
+macro_rules! mem {
+    ( $borrow:ident, $code: block) => {
+        {
+            match $borrow {
+                crate::memory::Memory::A(memory_var) => (),
+                crate::memory::Memory::B(memory_var) => {
+                    $code;
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! mem2 {
+    ( $borrow:ident) => {
+        {
+            match $borrow {
+                crate::memory::Memory::A(memory_var) => (),
+                crate::memory::Memory::B(memory_var) => {
+                    memory_var
+                }
+            }
+        }
+    };
+}
+
+
 // -1 for cold boot, 0 for normal
 pub fn init() -> u8 {
     let memory = RawMemory::get();

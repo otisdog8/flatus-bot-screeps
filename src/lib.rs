@@ -18,6 +18,8 @@ mod memory;
 mod strlib;
 mod refcell_serialization;
 
+use crate::memory::{MEMORY, Memory};
+
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]
 pub fn setup() {
@@ -30,17 +32,22 @@ pub fn setup() {
 pub fn game_loop() {
     memory::MEMORY.with(|memory_refcell| {
         let borrow = &*memory_refcell.borrow();
+        let memory_var = mem2!(borrow);
+
+        mem!(borrow, {
+            let val = memory_var.test2.borrow();
+            info!("Initial value of memory location {}", &*val);
+            let newval = &*val+1;
+            drop(val);
+            let a = memory_var.test2.replace(newval);
+            info!("Final value of memory location {}", memory_var.test2.borrow());
+        });
         match borrow {
             memory::Memory::A(a) => (),
             memory::Memory::B(b) => {
 
                 info!("aaaa");
-                let val = b.test2.borrow();
-                info!("Initial value of memory location {}", &*val);
-                let newval = &*val+1;
-                drop(val);
-                let a = b.test2.replace(newval);
-                info!("Final value of memory location {}", b.test2.borrow());
+
             }
         }
     });
