@@ -1,3 +1,9 @@
+# flatus-bot-screeps
+
+My screeps AI, just trying to do some cool stuff here
+
+Significant help from taintegral#8180, crazy10101#9079, Lazer#7240, Spy#9778 and others
+
 # screeps-starter-rust
 
 Starter Rust AI for [Screeps][screeps], the JavaScript-based MMO game.
@@ -7,7 +13,7 @@ This uses the [`screeps-game-api`] bindings from the [rustyscreeps] organization
 It's also recommended to use [`cargo-screeps`] for uploading the code.
 
 The documentation is currently a bit sparse. API docs which list functions one
-can use are located at <https://docs.rs/screeps-game-api/>.
+can use are located at <https://docs.rs/screeps-game-api/ >.
 
 Almost all crates on <https://crates.io/> are usable (only things which interact with OS
 apis are broken).
