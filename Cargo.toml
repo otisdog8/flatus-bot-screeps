@@ -17,7 +17,9 @@ screeps-game-api = { git = "https://github.com/rustyscreeps/screeps-game-api.git
 #screeps-game-api = "0.10"
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["console"] }
-
+rkyv = "0.7.20"
+rkyv_dyn = "0.7.20"
+rkyv_typename = "0.7.20"
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for

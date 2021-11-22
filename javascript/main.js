@@ -16,7 +16,7 @@ module.exports.loop = function() {
                 console.log("we are running out of time, pausing compile!" + JSON.stringify(Game.cpu));
                 return;
             }
-            
+
             // replace this initialize function on the module
             wasm_module = require("screeps-starter-rust");
             // load the wasm instance!

@@ -1,1 +1,5 @@
- 
+
+
+pub trait Process {
+
+}

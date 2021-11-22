@@ -9,11 +9,14 @@ use screeps::{
 use wasm_bindgen::prelude::*;
 
 mod logging;
+mod memory;
+mod strlib;
 
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]
 pub fn setup() {
     logging::setup_logging(logging::Info);
+    memory::init();
 }
 
 // this is one way to persist data between ticks within Rust's memory, as opposed to
