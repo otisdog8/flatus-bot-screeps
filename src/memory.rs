@@ -8,34 +8,37 @@ use rkyv::check_archived_root;
 use screeps::RawMemory;
 use std::{borrow::Borrow, cell::RefCell, rc::Rc};
 
-use crate::strlib;
+use crate::{strlib, refcell_serialization};
 
 thread_local! {
-    static MEMORY: RefCell<Memory> = RefCell::new(Memory::A(MemoryA { test: 255 }));
+    pub static MEMORY: RefCell<Memory> = RefCell::new(Memory::A(MemoryA { test: 255 }));
 }
 
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
-enum Memory {
+pub enum Memory {
     A(MemoryA),
     B(MemoryB),
 }
 
+
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
-struct MemoryA {
-    test: u32,
+pub struct MemoryA {
+    pub test: u32,
 }
 
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
-struct MemoryB {
-    test: u8,
+pub struct MemoryB {
+    pub test: u8,
+    #[with(refcell_serialization::InlineRefCell)]
+    pub test2: RefCell<u16>,
 }
 
 // PLEASE REMEMBER TO DISABLE MIGRATIONS AFTER THEY HAVE OCCURRED
-// CURRENT MEMORY VERSION IS A
-const MIGRATE: bool = true;
+// CURRENT MEMORY VERSION IS B
+const MIGRATE: bool = false;
 
 // -1 for cold boot, 0 for normal
 pub fn init() -> u8 {
@@ -56,7 +59,7 @@ pub fn init() -> u8 {
                 let old_test = old_memory.test;
                 let new_test = old_test as u8;
                 MEMORY.with(|memory_refcell| {
-                    memory_refcell.replace(Memory::B(MemoryB { test: new_test }));
+                    memory_refcell.replace(Memory::B(MemoryB { test: new_test, test2: RefCell::new(new_test as u16) }));
                 });
             }
             Memory::B(old_memory) => {

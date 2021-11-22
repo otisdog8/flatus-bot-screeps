@@ -28,7 +28,22 @@ pub fn setup() {
 // to use a reserved name as a function name, use `js_name`:
 #[wasm_bindgen(js_name = loop)]
 pub fn game_loop() {
+    memory::MEMORY.with(|memory_refcell| {
+        let borrow = &*memory_refcell.borrow();
+        match borrow {
+            memory::Memory::A(a) => (),
+            memory::Memory::B(b) => {
 
+                info!("aaaa");
+                let val = b.test2.borrow();
+                info!("Initial value of memory location {}", &*val);
+                let newval = &*val+1;
+                drop(val);
+                let a = b.test2.replace(newval);
+                info!("Final value of memory location {}", b.test2.borrow());
+            }
+        }
+    });
     // Game::spawns returns a `js_sys::Object`, which is a light reference to an
     // object of any kind which is held on the javascript heap.
     //
