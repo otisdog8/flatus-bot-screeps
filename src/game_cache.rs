@@ -1,0 +1,1 @@
+// Caches items from the game - passed to processes

@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 #![allow(unused_macros)]
 #![allow(unused_unsafe)]
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -11,7 +12,7 @@ use log::*;
 use performance::{get_mut_perflog, get_perflog, get_taskdata, get_tasklog};
 use screeps::{
     find, game, prelude::*, Creep, ObjectId, Part, ResourceType, ReturnCode, RoomObjectProperties,
-    Source, StructureController, StructureObject,
+    Source, StructureController, StructureObject, StructureSpawn,
 };
 use wasm_bindgen::prelude::*;
 
@@ -20,6 +21,9 @@ mod memory;
 mod performance;
 mod refcell_serialization;
 mod strlib;
+mod process;
+mod process_table;
+mod game_cache;
 
 use crate::memory::{get_memory, Memory, MEMORY};
 
@@ -49,14 +53,9 @@ pub fn game_loop() {
             let borrow = &*memory_refcell.borrow();
             let memory_var = get_memory(borrow);
             let val = memory_var.test2.borrow();
-            info!("Initial value of memory location {}", &*val);
             let newval = &*val + 1;
             drop(val);
             let a = memory_var.test2.replace(newval);
-            info!(
-                "Final value of memory location {}",
-                memory_var.test2.borrow()
-            );
         });
     );
     MEMORY.with(|memory_refcell| {
@@ -66,11 +65,9 @@ pub fn game_loop() {
         let perf = get_perflog(perf);
         for (key, value) in &perf.perf_data {
             let data = get_taskdata(value);
-            info!("k {} v {}", key, data.get(true));
+            info!("k {} v {}", key, data.get(false));
         }
-        info!("Ran loop");
     });
-
     // Game::spawns returns a `js_sys::Object`, which is a light reference to an
     // object of any kind which is held on the javascript heap.
     //

@@ -230,6 +230,7 @@ pub fn get_mut_tasklog(borrow: &mut TaskLog) -> &mut TaskLogA {
     }
 }
 
+// Disable/enable perf based on stuff - modify the macro but make it a software switch/epuisal later
 #[macro_export]
 macro_rules! perf {
     ( $name:expr, $($code:stmt);+ $(;)?) => {
