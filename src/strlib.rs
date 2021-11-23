@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
-use web_sys::console;
 use js_sys::JsString;
 use std::convert::TryInto;
+use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 // CREDIT TO crazy10101#9079 (140580006542835713) on discord - khoover on GitHub
 // https://github.com/khoover/screeps-starter-rust/tree/recast-poc
@@ -12,7 +12,8 @@ macro_rules! console_log {
     ($($t:tt)*) => (console::log_1(&format_args!($($t)*).to_string().into()))
 }
 
-#[wasm_bindgen(inline_js = "const fromCharCode = String.fromCharCode; export function utf16_to_jsstring(utf16) { let ret = ''; let i = 0; for (; i < utf16.length - 32; i += 32) { ret += fromCharCode(
+#[wasm_bindgen(
+    inline_js = "const fromCharCode = String.fromCharCode; export function utf16_to_jsstring(utf16) { let ret = ''; let i = 0; for (; i < utf16.length - 32; i += 32) { ret += fromCharCode(
     utf16[i+0], utf16[i+1], utf16[i+2], utf16[i+3], utf16[i+4], utf16[i+5], utf16[i+6], utf16[i+7], utf16[i+8], utf16[i+9],
     utf16[i+10], utf16[i+11], utf16[i+12], utf16[i+13], utf16[i+14], utf16[i+15], utf16[i+16], utf16[i+17], utf16[i+18], utf16[i+19],
     utf16[i+20], utf16[i+21], utf16[i+22], utf16[i+23], utf16[i+24], utf16[i+25], utf16[i+26], utf16[i+27], utf16[i+28], utf16[i+29],
@@ -24,7 +25,8 @@ export function jsstring_to_utf16(s, buf) {
     for (let i = 0; i < buf.length; ++i) {
         buf[i] = s.charCodeAt(i);
     }
-}")]
+}"
+)]
 extern "C" {
     fn utf16_to_jsstring(utf16: &[u16]) -> JsString;
 
@@ -60,29 +62,42 @@ fn write_byte_chunk(bytes: &[u8], extras: &mut u64, output_chunk: &mut [u16]) {
 
 // borrowed parts from the base64 encoder
 fn bytestring_to_utf15(bytes: &[u8]) -> Vec<u16> {
-    if bytes.is_empty() { return Vec::new(); }
+    if bytes.is_empty() {
+        return Vec::new();
+    }
 
     // each block is 15 u64s, so 15*8=120 u8s
     let (encoded_len, has_remainder): (usize, bool) = {
         let len = bytes.len();
         let remainder = len % INPUT_BLOCK_SIZE;
         let num_blocks = len / INPUT_BLOCK_SIZE + (if remainder != 0 { 1 } else { 0 });
-        (OUTPUT_BLOCK_SIZE*num_blocks + 1, remainder != 0)
+        (OUTPUT_BLOCK_SIZE * num_blocks + 1, remainder != 0)
     };
     let mut output: Vec<u16> = vec![0; encoded_len];
-    if has_remainder { output[0] = 0x0031; } else { output[0] = 0x0030; }
+    if has_remainder {
+        output[0] = 0x0031;
+    } else {
+        output[0] = 0x0030;
+    }
     let mut output_index: usize = 1;
     let mut input_index: usize = 0;
     let last_fast_index = bytes.len().saturating_sub(120);
-    
+
     if last_fast_index > 0 {
         while input_index <= last_fast_index {
             let bytes_chunk = &bytes[input_index..input_index + INPUT_BLOCK_SIZE];
             let output_chunk = &mut output[output_index..output_index + OUTPUT_BLOCK_SIZE];
             let mut extras: u64 = 0;
 
-            for (bytes_index, output_chunk_index) in (0..INPUT_BLOCK_SIZE).step_by(8).zip((0..OUTPUT_BLOCK_SIZE-4).step_by(4)) {
-                write_byte_chunk(&bytes_chunk[bytes_index..], &mut extras, &mut output_chunk[output_chunk_index..]);
+            for (bytes_index, output_chunk_index) in (0..INPUT_BLOCK_SIZE)
+                .step_by(8)
+                .zip((0..OUTPUT_BLOCK_SIZE - 4).step_by(4))
+            {
+                write_byte_chunk(
+                    &bytes_chunk[bytes_index..],
+                    &mut extras,
+                    &mut output_chunk[output_chunk_index..],
+                );
             }
             output_chunk[60] = ((extras >> 4) & LOW_FIFTEEN_BITS) as u16;
             output_chunk[61] = ((extras >> 19) & LOW_FIFTEEN_BITS) as u16;
@@ -103,8 +118,15 @@ fn bytestring_to_utf15(bytes: &[u8]) -> Vec<u16> {
         let output_chunk = &mut output[output_index..output_index + OUTPUT_BLOCK_SIZE];
         let mut extras: u64 = 0;
 
-        for (bytes_index, output_chunk_index) in (0..INPUT_BLOCK_SIZE).step_by(8).zip((0..OUTPUT_BLOCK_SIZE-4).step_by(4)) {
-            write_byte_chunk(&bytes_chunk[bytes_index..], &mut extras, &mut output_chunk[output_chunk_index..]);
+        for (bytes_index, output_chunk_index) in (0..INPUT_BLOCK_SIZE)
+            .step_by(8)
+            .zip((0..OUTPUT_BLOCK_SIZE - 4).step_by(4))
+        {
+            write_byte_chunk(
+                &bytes_chunk[bytes_index..],
+                &mut extras,
+                &mut output_chunk[output_chunk_index..],
+            );
         }
         output_chunk[60] = ((extras >> 4) & LOW_FIFTEEN_BITS) as u16;
         output_chunk[61] = ((extras >> 19) & LOW_FIFTEEN_BITS) as u16;
@@ -118,15 +140,13 @@ fn bytestring_to_utf15(bytes: &[u8]) -> Vec<u16> {
 #[wasm_bindgen]
 pub fn bytestring_to_jsstring(bytes: &[u8]) -> JsString {
     let utf15 = bytestring_to_utf15(bytes);
-    unsafe {
-        utf16_to_jsstring(utf15.as_slice())
-    }
+    unsafe { utf16_to_jsstring(utf15.as_slice()) }
 }
 
 #[inline(always)]
 fn decode_block(input: &[u16], remainder: u64, output: &mut [u8]) {
     let mut accum = remainder;
-    
+
     accum |= (input[0] as u64) << 4;
     accum |= (input[1] as u64) << 19;
     accum |= (input[2] as u64) << 34;
@@ -146,7 +166,9 @@ fn decode_extra(input: &[u16]) -> u64 {
 
 #[wasm_bindgen]
 pub fn jsstring_to_bytestring(utf15: &JsString) -> Vec<u8> {
-    if utf15.length() == 0 { return Vec::new(); }
+    if utf15.length() == 0 {
+        return Vec::new();
+    }
     assert_eq!(utf15.length() % OUTPUT_BLOCK_SIZE as u32, 1);
 
     let mut utf15_vec: Vec<u16> = vec![0; utf15.length().try_into().unwrap()];
@@ -171,40 +193,96 @@ pub fn jsstring_to_bytestring(utf15: &JsString) -> Vec<u8> {
     let mut output: Vec<u8> = vec![0; INPUT_BLOCK_SIZE * fast_blocks + remainder_size];
     let mut utf15_index: usize = 0;
     let mut output_index: usize = 0;
-    for _ in 0 .. fast_blocks {
+    for _ in 0..fast_blocks {
         let utf15_chunk = &utf15_vec[utf15_index..utf15_index + OUTPUT_BLOCK_SIZE];
         let output_chunk = &mut output[output_index..output_index + INPUT_BLOCK_SIZE];
         let extra = decode_extra(&utf15_chunk[60..]);
 
         decode_block(utf15_chunk, (extra >> 56) & LOW_FOUR_BITS, output_chunk);
 
-        decode_block(&utf15_chunk[4..], (extra >> 52) & LOW_FOUR_BITS, &mut output_chunk[8..]);
+        decode_block(
+            &utf15_chunk[4..],
+            (extra >> 52) & LOW_FOUR_BITS,
+            &mut output_chunk[8..],
+        );
 
-        decode_block(&utf15_chunk[8..], (extra >> 48) & LOW_FOUR_BITS, &mut output_chunk[16..]);
+        decode_block(
+            &utf15_chunk[8..],
+            (extra >> 48) & LOW_FOUR_BITS,
+            &mut output_chunk[16..],
+        );
 
-        decode_block(&utf15_chunk[12..], (extra >> 44) & LOW_FOUR_BITS, &mut output_chunk[24..]);
+        decode_block(
+            &utf15_chunk[12..],
+            (extra >> 44) & LOW_FOUR_BITS,
+            &mut output_chunk[24..],
+        );
 
-        decode_block(&utf15_chunk[16..], (extra >> 40) & LOW_FOUR_BITS, &mut output_chunk[32..]);
+        decode_block(
+            &utf15_chunk[16..],
+            (extra >> 40) & LOW_FOUR_BITS,
+            &mut output_chunk[32..],
+        );
 
-        decode_block(&utf15_chunk[20..], (extra >> 36) & LOW_FOUR_BITS, &mut output_chunk[40..]);
+        decode_block(
+            &utf15_chunk[20..],
+            (extra >> 36) & LOW_FOUR_BITS,
+            &mut output_chunk[40..],
+        );
 
-        decode_block(&utf15_chunk[24..], (extra >> 32) & LOW_FOUR_BITS, &mut output_chunk[48..]);
+        decode_block(
+            &utf15_chunk[24..],
+            (extra >> 32) & LOW_FOUR_BITS,
+            &mut output_chunk[48..],
+        );
 
-        decode_block(&utf15_chunk[28..], (extra >> 28) & LOW_FOUR_BITS, &mut output_chunk[56..]);
+        decode_block(
+            &utf15_chunk[28..],
+            (extra >> 28) & LOW_FOUR_BITS,
+            &mut output_chunk[56..],
+        );
 
-        decode_block(&utf15_chunk[32..], (extra >> 24) & LOW_FOUR_BITS, &mut output_chunk[64..]);
+        decode_block(
+            &utf15_chunk[32..],
+            (extra >> 24) & LOW_FOUR_BITS,
+            &mut output_chunk[64..],
+        );
 
-        decode_block(&utf15_chunk[36..], (extra >> 20) & LOW_FOUR_BITS, &mut output_chunk[72..]);
+        decode_block(
+            &utf15_chunk[36..],
+            (extra >> 20) & LOW_FOUR_BITS,
+            &mut output_chunk[72..],
+        );
 
-        decode_block(&utf15_chunk[40..], (extra >> 16) & LOW_FOUR_BITS, &mut output_chunk[80..]);
+        decode_block(
+            &utf15_chunk[40..],
+            (extra >> 16) & LOW_FOUR_BITS,
+            &mut output_chunk[80..],
+        );
 
-        decode_block(&utf15_chunk[44..], (extra >> 12) & LOW_FOUR_BITS, &mut output_chunk[88..]);
+        decode_block(
+            &utf15_chunk[44..],
+            (extra >> 12) & LOW_FOUR_BITS,
+            &mut output_chunk[88..],
+        );
 
-        decode_block(&utf15_chunk[48..], (extra >> 8) & LOW_FOUR_BITS, &mut output_chunk[96..]);
+        decode_block(
+            &utf15_chunk[48..],
+            (extra >> 8) & LOW_FOUR_BITS,
+            &mut output_chunk[96..],
+        );
 
-        decode_block(&utf15_chunk[52..], (extra >> 4) & LOW_FOUR_BITS, &mut output_chunk[104..]);
+        decode_block(
+            &utf15_chunk[52..],
+            (extra >> 4) & LOW_FOUR_BITS,
+            &mut output_chunk[104..],
+        );
 
-        decode_block(&utf15_chunk[56..], extra & LOW_FOUR_BITS, &mut output_chunk[112..]);
+        decode_block(
+            &utf15_chunk[56..],
+            extra & LOW_FOUR_BITS,
+            &mut output_chunk[112..],
+        );
 
         output_index += INPUT_BLOCK_SIZE;
         utf15_index += OUTPUT_BLOCK_SIZE;
@@ -216,8 +294,10 @@ pub fn jsstring_to_bytestring(utf15: &JsString) -> Vec<u8> {
         let extra = decode_extra(&utf15_chunk[60..]);
 
         decode_block(utf15_chunk, (extra >> 56) & LOW_FOUR_BITS, &mut tmp);
-        output_chunk[..7.min(remainder_size)].copy_from_slice(&tmp[1..8.min(remainder_size+1)]);
-        if remainder_size <= 7 { return output; }
+        output_chunk[..7.min(remainder_size)].copy_from_slice(&tmp[1..8.min(remainder_size + 1)]);
+        if remainder_size <= 7 {
+            return output;
+        }
 
         let output_chunk = &mut output_chunk[7..];
         let utf15_chunk = &utf15_chunk[4..];
@@ -228,15 +308,24 @@ pub fn jsstring_to_bytestring(utf15: &JsString) -> Vec<u8> {
             let mut inner_utf_index: usize = 0;
             let mut inner_output_index: usize = 0;
 
-            for _ in 0 .. semi_fast_blocks {
-                decode_block(&utf15_chunk[inner_utf_index..], (extra >> extra_shift) & LOW_FOUR_BITS, &mut output_chunk[inner_output_index..]);
+            for _ in 0..semi_fast_blocks {
+                decode_block(
+                    &utf15_chunk[inner_utf_index..],
+                    (extra >> extra_shift) & LOW_FOUR_BITS,
+                    &mut output_chunk[inner_output_index..],
+                );
                 extra_shift -= 4;
                 inner_utf_index += 4;
                 inner_output_index += 8;
             }
 
-            decode_block(&utf15_chunk[inner_utf_index..], (extra >> extra_shift) & LOW_FOUR_BITS, &mut tmp);
-            output_chunk[inner_output_index..inner_output_index + annoying_bytes].copy_from_slice(&tmp[..annoying_bytes]);
+            decode_block(
+                &utf15_chunk[inner_utf_index..],
+                (extra >> extra_shift) & LOW_FOUR_BITS,
+                &mut tmp,
+            );
+            output_chunk[inner_output_index..inner_output_index + annoying_bytes]
+                .copy_from_slice(&tmp[..annoying_bytes]);
         } else if annoying_bytes > 0 {
             decode_block(utf15_chunk, (extra >> 52) & LOW_FOUR_BITS, &mut tmp);
             output_chunk[..annoying_bytes].copy_from_slice(&tmp[..annoying_bytes]);

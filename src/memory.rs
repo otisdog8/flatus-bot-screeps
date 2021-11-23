@@ -1,17 +1,22 @@
 use bytecheck::CheckBytes;
+use log::*;
+use rkyv::check_archived_root;
 use rkyv::{
     archived_root,
     ser::{serializers::AllocSerializer, Serializer},
     Archive, Deserialize, Infallible, Serialize,
 };
-use rkyv::check_archived_root;
 use screeps::RawMemory;
 use std::{borrow::Borrow, cell::RefCell, rc::Rc};
 
-use crate::{strlib, refcell_serialization};
+use crate::performance::new_perflog_as_enum;
+use crate::{
+    performance::{self, PerfLog},
+    refcell_serialization, strlib,
+};
 
 thread_local! {
-    pub static MEMORY: RefCell<Memory> = RefCell::new(Memory::A(MemoryA { test: 255 }));
+    pub static MEMORY: RefCell<Memory> = RefCell::new(Memory::A(MemoryA::new()));
 }
 
 #[derive(Archive, Serialize, Deserialize)]
@@ -21,11 +26,24 @@ pub enum Memory {
     B(MemoryB),
 }
 
-
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
 pub struct MemoryA {
     pub test: u32,
+    #[with(refcell_serialization::InlineRefCell)]
+    pub test2: RefCell<u32>,
+    #[with(refcell_serialization::InlineRefCell)]
+    pub perf: RefCell<performance::PerfLog>,
+}
+// Implement entirely new instances in the event of a cold boot
+impl MemoryA {
+    pub fn new() -> MemoryA {
+        MemoryA {
+            test: 0,
+            test2: RefCell::new(0),
+            perf: RefCell::new(performance::new_perflog_as_enum()),
+        }
+    }
 }
 
 #[derive(Archive, Serialize, Deserialize)]
@@ -35,56 +53,74 @@ pub struct MemoryB {
     #[with(refcell_serialization::InlineRefCell)]
     pub test2: RefCell<u16>,
 }
+// Implement entirely new instances in the event of a cold boot
+impl MemoryB {
+    pub fn new() -> MemoryB {
+        MemoryB {
+            test: 0,
+            test2: RefCell::new(0),
+        }
+    }
+}
 
 // PLEASE REMEMBER TO DISABLE MIGRATIONS AFTER THEY HAVE OCCURRED
-// CURRENT MEMORY VERSION IS B
+// CURRENT MEMORY VERSION IS A
 const MIGRATE: bool = false;
 
+pub fn new_memory_as_enum() -> Memory {
+    // Cold boot Memory generator
+    Memory::A(MemoryA::new())
+}
+
 // Function to return current memory version
-// Requires borrow as the instance of Memory, will put memory_var in scope as MemoryB
-pub fn get_memory(borrow: &Memory) -> &MemoryB {
+// Requires borrow as the instance of Memory, will put memory_var in scope as <current memory version>
+pub fn get_memory(borrow: &Memory) -> &MemoryA {
     match borrow {
         Memory::A(a) => {
             // Memory should never be a MemoryA
-            panic!("DN");
-        },
-        Memory::B(b) => {
-            b
+            a
         }
+        Memory::B(b) => panic!("DN"),
     }
 }
 
 // -1 for cold boot, 0 for normal
 pub fn init() -> u8 {
     let memory = RawMemory::get();
-    let memory_bytestring = strlib::jsstring_to_bytestring(&memory);
-    let zcp_memory = check_archived_root::<Memory>(&memory_bytestring).unwrap();
-    let deserialized_memory: Memory = zcp_memory.deserialize(&mut Infallible).unwrap();
-    if !MIGRATE {
+    if memory.length() == 0 {
+        // This only happens if Memory got wiped somehow (bad)
         MEMORY.with(|memory_refcell| {
-            memory_refcell.replace(deserialized_memory);
+            memory_refcell.replace(new_memory_as_enum());
         });
-    }
-    else {
+        return 255;
+    } else {
+        let memory_bytestring = strlib::jsstring_to_bytestring(&memory);
+        let zcp_memory = check_archived_root::<Memory>(&memory_bytestring).unwrap();
+        let deserialized_memory: Memory = zcp_memory.deserialize(&mut Infallible).unwrap();
         // Code to migrate from one version of the Memory struct to the next
-        // A -> B current migration
+        // B -> A current migration
         match deserialized_memory {
-            Memory::A(old_memory) => {
-                let old_test = old_memory.test;
-                let new_test = old_test as u8;
-                MEMORY.with(|memory_refcell| {
-                    memory_refcell.replace(Memory::B(MemoryB { test: new_test, test2: RefCell::new(new_test as u16) }));
-                });
-            }
-            Memory::B(_) => {
+            Memory::A(_) => {
                 MEMORY.with(|memory_refcell| {
                     memory_refcell.replace(deserialized_memory);
                 });
             }
+            Memory::B(old_memory) => {
+                let old_test = old_memory.test;
+                let new_test = old_test as u32;
+                let old_test2 = old_memory.test2.into_inner() as u32;
+                let new_test2 = RefCell::new(old_test2);
+                let perf = RefCell::new(new_perflog_as_enum());
+                MEMORY.with(|memory_refcell| {
+                    memory_refcell.replace(Memory::A(MemoryA {
+                        test: new_test,
+                        test2: new_test2,
+                        perf: perf,
+                    }));
+                });
+            }
         }
-
     }
-
     // Deserialize Memory from JsString to Vec<u8>
     // Copy Deserialize Vec<u8> to Memory enum
     // If type != CURRENT_MEMORY_VERSION, migrate (code this manually) and change Structs

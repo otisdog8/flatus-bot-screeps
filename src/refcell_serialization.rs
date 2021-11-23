@@ -1,4 +1,8 @@
-use rkyv::{boxed::{ArchivedBox, BoxResolver}, Archive, Deserialize, Serialize, Fallible, with::{ArchiveWith, DeserializeWith, SerializeWith}};
+use rkyv::{
+    boxed::{ArchivedBox, BoxResolver},
+    with::{ArchiveWith, DeserializeWith, SerializeWith},
+    Archive, Deserialize, Fallible, Serialize,
+};
 use std::cell::RefCell;
 
 pub struct InlineRefCell;
@@ -25,7 +29,6 @@ impl<F: Serialize<S>, S: Fallible + ?Sized> SerializeWith<RefCell<F>, S> for Inl
     }
 }
 
-
 impl<F: Archive, D: Fallible + ?Sized> DeserializeWith<F::Archived, RefCell<F>, D> for InlineRefCell
 where
     F::Archived: Deserialize<F, D>,
@@ -33,9 +36,7 @@ where
     #[inline]
     fn deserialize_with(field: &F::Archived, deserializer: &mut D) -> Result<RefCell<F>, D::Error> {
         match field.deserialize(deserializer) {
-            Ok(val) => {
-                Ok(RefCell::new(val))
-            },
+            Ok(val) => Ok(RefCell::new(val)),
             Err(a) => Err(a),
         }
     }
