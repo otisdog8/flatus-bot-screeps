@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 #![allow(unused_imports)]
 #![allow(unused_macros)]
+#![allow(unused_unsafe)]
 use std::cell::RefCell;
 use std::collections::HashMap;
 
