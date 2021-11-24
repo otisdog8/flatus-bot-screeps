@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use log::*;
-use performance::{get_mut_perflog, get_perflog, get_taskdata, get_tasklog};
+use performance::{get_mut_perflog, get_perflog, get_taskdata, get_tasklog, taskdata_get};
 use screeps::{
     find, game, prelude::*, Creep, ObjectId, Part, ResourceType, ReturnCode, RoomObjectProperties,
     Source, StructureController, StructureObject, StructureSpawn,
@@ -22,8 +22,9 @@ mod performance;
 mod refcell_serialization;
 mod strlib;
 mod process;
-mod process_table;
+mod scheduler;
 mod game_cache;
+mod shared_data_cache;
 
 use crate::memory::{get_memory, Memory, MEMORY};
 
@@ -31,7 +32,11 @@ use crate::memory::{get_memory, Memory, MEMORY};
 #[wasm_bindgen]
 pub fn setup() {
     logging::setup_logging(logging::Info);
-    memory::init();
+    let cold = memory::init();
+    if cold == 255 {
+        // Spawn new process
+
+    }
 }
 
 // to use a reserved name as a function name, use `js_name`:
@@ -58,16 +63,7 @@ pub fn game_loop() {
             let a = memory_var.test2.replace(newval);
         });
     );
-    MEMORY.with(|memory_refcell| {
-        let borrow = &*memory_refcell.borrow();
-        let memory_var = get_memory(borrow);
-        let perf = &*memory_var.perf.borrow();
-        let perf = get_perflog(perf);
-        for (key, value) in &perf.perf_data {
-            let data = get_taskdata(value);
-            info!("k {} v {}", key, data.get(false));
-        }
-    });
+    info!("v {}", taskdata_get(1, true));
     // Game::spawns returns a `js_sys::Object`, which is a light reference to an
     // object of any kind which is held on the javascript heap.
     //

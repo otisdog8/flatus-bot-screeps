@@ -230,7 +230,23 @@ pub fn get_mut_tasklog(borrow: &mut TaskLog) -> &mut TaskLogA {
     }
 }
 
-// Disable/enable perf based on stuff - modify the macro but make it a software switch/epuisal later
+pub fn taskdata_get(k: u16, largest: bool) -> f64 {
+    MEMORY.with(|memory_refcell| {
+        let borrow = &*memory_refcell.borrow();
+        let memory_var = get_memory(borrow);
+        let perf = &*memory_var.perf.borrow();
+        let perf = get_perflog(perf);
+        return match perf.perf_data.get(&k) {
+            Some(val) => {
+            let data = get_taskdata(val);
+                data.get(largest)
+            },
+            None => 0f64,
+        };
+    })
+}
+
+// Disable/enable perf based on stuff - modify the macro but make it a software  later
 #[macro_export]
 macro_rules! perf {
     ( $name:expr, $($code:stmt);+ $(;)?) => {

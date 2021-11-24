@@ -8,12 +8,12 @@ use rkyv_typename::TypeName;
 
 #[archive_dyn(deserialize)]
 pub trait Process {
-    fn get_priority(&self) -> u8;
-
     // Blocks on tick or interprocess communication
     fn can_run(&self) -> bool;
 
-    fn get_pid(&self) -> u16;
+    fn get_pid(&self) -> u32;
+
+    fn set_pid(&mut self, pid: u32);
 
     fn get_ptype(&self) -> u16;
 
@@ -30,20 +30,22 @@ pub trait Process {
 
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(TypeName))]
-struct TestProcess {}
+pub struct TestProcess {
+    pid: u32,
+}
 
 #[archive_dyn(deserialize)]
 impl Process for TestProcess {
-    fn get_priority(&self) -> u8 {
-        0
-    }
-
     fn can_run(&self) -> bool {
         true
     }
 
-    fn get_pid(&self) -> u16 {
+    fn get_pid(&self) -> u32 {
         0
+    }
+
+    fn set_pid(&mut self, pid: u32) {
+        self.pid = pid;
     }
 
     fn get_ptype(&self) -> u16 {
@@ -68,16 +70,16 @@ impl Process for TestProcess {
 }
 
 impl Process for Archived<TestProcess> {
-    fn get_priority(&self) -> u8 {
-        0
-    }
-
     fn can_run(&self) -> bool {
         true
     }
 
-    fn get_pid(&self) -> u16 {
+    fn get_pid(&self) -> u32 {
         0
+    }
+
+    fn set_pid(&mut self, pid: u32) {
+        self.pid = pid;
     }
 
     fn get_ptype(&self) -> u16 {
