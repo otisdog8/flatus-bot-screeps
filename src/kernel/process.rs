@@ -30,6 +30,7 @@ use std::cell::RefCell;
 pub enum Process {
     TestProcessA(TestProcessA) = 1,
     TestProcessB(TestProcessA) = 2,
+    
 }
 
 #[derive(Archive, Serialize, Deserialize)]

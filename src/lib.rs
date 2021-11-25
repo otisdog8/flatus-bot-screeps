@@ -22,6 +22,7 @@ mod kernel;
 mod logging;
 mod memory;
 mod performance;
+mod processes;
 mod refcell_serialization;
 mod shared_data_cache;
 mod strlib;
