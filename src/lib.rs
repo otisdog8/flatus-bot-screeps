@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 #![allow(unused_macros)]
 #![allow(unused_unsafe)]
+#![feature(arbitrary_enum_discriminant)]
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,15 +17,17 @@ use screeps::{
 };
 use wasm_bindgen::prelude::*;
 
+mod game_cache;
+mod ipc;
+mod kernel;
 mod logging;
 mod memory;
 mod performance;
-mod refcell_serialization;
-mod strlib;
 mod process;
+mod refcell_serialization;
 mod scheduler;
-mod game_cache;
 mod shared_data_cache;
+mod strlib;
 
 use crate::memory::{get_memory, Memory, MEMORY};
 
@@ -35,7 +38,6 @@ pub fn setup() {
     let cold = memory::init();
     if cold == 255 {
         // Spawn new process
-
     }
 }
 

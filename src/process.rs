@@ -1,41 +1,57 @@
+use crate::refcell_serialization::InlineRefCell;
+use bytecheck::CheckBytes;
 use rkyv::{
     archived_value,
     ser::{serializers::AllocSerializer, Serializer},
     Archive, Archived, Deserialize, Infallible, Serialize,
 };
-use rkyv_dyn::archive_dyn;
-use rkyv_typename::TypeName;
+use std::cell::RefCell;
 
-#[archive_dyn(deserialize)]
-pub trait Process {
-    // Blocks on tick or interprocess communication
-    fn can_run(&self) -> bool;
-
-    fn get_pid(&self) -> u32;
-
-    fn set_pid(&mut self, pid: u32);
-
-    fn get_ptype(&self) -> u16;
-
-    fn term(&self) -> bool;
-
-    fn kill(&self);
-
-    fn spawn_child_process(&self);
-
-    fn get_child_processes(&self) -> Vec<u16>;
-
-    fn run(&mut self) -> u16;
+#[derive(Archive, Serialize, Deserialize)]
+#[archive_attr(derive(CheckBytes))]
+#[archive_attr(repr(u16))]
+#[impl_enum::with_methods {
+    pub fn can_run(&self) -> bool {}
+    pub fn get_pid(&self) -> u32 {}
+    pub fn set_pid(&mut self, pid: u32) {}
+    pub fn get_prio(&mut self) -> u8 {}
+    pub fn set_prio(&mut self, prio: u8) {}
+    pub fn get_ptype(&self) -> u16 {}
+    pub fn kill(&self) {}
+    pub fn spawn_child_process(&self) {}
+    pub fn get_child_processes(&self) -> Vec<u32> {}
+    pub fn run(&mut self) -> u16 {}
+}]
+#[repr(u16)]
+pub enum Process {
+    TestProcessA(TestProcessA) = 1,
+    TestProcessB(TestProcessA) = 2,
 }
 
 #[derive(Archive, Serialize, Deserialize)]
-#[archive_attr(derive(TypeName))]
-pub struct TestProcess {
+#[archive_attr(derive(CheckBytes))]
+pub struct ProcessContainer {
+    #[with(InlineRefCell)]
+    pub val: RefCell<Process>,
+}
+
+impl ProcessContainer {
+    pub fn new() -> ProcessContainer {
+        ProcessContainer {
+            val: RefCell::new(Process::TestProcessA(TestProcessA::new())),
+        }
+    }
+}
+
+// Current version of TestProcess is A
+
+#[derive(Archive, Serialize, Deserialize)]
+#[archive_attr(derive(CheckBytes))]
+pub struct TestProcessA {
     pid: u32,
 }
 
-#[archive_dyn(deserialize)]
-impl Process for TestProcess {
+impl TestProcessA {
     fn can_run(&self) -> bool {
         true
     }
@@ -48,61 +64,34 @@ impl Process for TestProcess {
         self.pid = pid;
     }
 
+    fn get_prio(&self) -> u8 {
+        0
+    }
+
+    fn set_prio(&mut self, prio: u8) {}
+
     fn get_ptype(&self) -> u16 {
         0
     }
 
-    fn term(&self) -> bool {
-        true
+    fn kill(&self) {
+        // Recursively kill child processes
     }
-
-    fn kill(&self) {}
 
     fn spawn_child_process(&self) {}
 
-    fn get_child_processes(&self) -> Vec<u16> {
+    fn get_child_processes(&self) -> Vec<u32> {
         Vec::new()
     }
 
     fn run(&mut self) -> u16 {
         0
     }
-}
 
-impl Process for Archived<TestProcess> {
-    fn can_run(&self) -> bool {
-        true
-    }
-
-    fn get_pid(&self) -> u32 {
-        0
-    }
-
-    fn set_pid(&mut self, pid: u32) {
-        self.pid = pid;
-    }
-
-    fn get_ptype(&self) -> u16 {
-        0
-    }
-
-    fn term(&self) -> bool {
-        true
-    }
-
-    fn kill(&self) {}
-
-    fn spawn_child_process(&self) {}
-
-    fn get_child_processes(&self) -> Vec<u16> {
-        Vec::new()
-    }
-
-    fn run(&mut self) -> u16 {
-        0
+    fn new() -> TestProcessA {
+        TestProcessA {pid: 0}
     }
 }
-
 
 // Can_run
 // Run_process
