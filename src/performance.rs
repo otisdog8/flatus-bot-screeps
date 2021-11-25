@@ -266,3 +266,8 @@ macro_rules! perf {
 }
 
 // Task to TaskInt register:
+// 1 - Basic testing task
+// 2 - Kernel Pretick
+// 3 - Kernel Tick
+// 4 - Kernel Posttick
+// 5 - Init Process

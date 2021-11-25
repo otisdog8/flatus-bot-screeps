@@ -80,13 +80,19 @@ impl SchedulerA {
                 }
             }
         }
+        ran.clear();
     }
 
     pub fn spawn_process(&mut self, process: &ProcessContainer) {
+        let pid = process.val.borrow().get_pid();
+        let prio = process.val.borrow().get_prio();
+        self.prio.insert(pid, prio);
 
     }
 
-    pub fn kill_process(&self, pid: u32) {}
+    pub fn kill_process(&mut self, pid: u32) {
+        self.prio.remove(&pid);
+    }
 }
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]

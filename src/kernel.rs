@@ -3,10 +3,13 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::{collections::HashMap, rc::Rc};
 
-use crate::ipc::{InterProcessCommunication, new_ipc_as_enum, get_mut_ipc};
+use crate::ipc::{get_mut_ipc, new_ipc_as_enum, InterProcessCommunication};
+use crate::perf;
+use crate::performance::taskdata_get;
 use crate::process::ProcessContainer;
 use crate::refcell_serialization::InlineRefCell;
-use crate::scheduler::{new_scheduler_as_enum, Scheduler, get_mut_scheduler};
+use crate::scheduler::{get_mut_scheduler, new_scheduler_as_enum, Scheduler};
+use crate::shared_data_cache::SharedDataCache;
 
 use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
@@ -32,7 +35,7 @@ enum Kernel {
 
 #[derive(Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
-struct KernelA {
+pub struct KernelA {
     #[with(InlineRefCell)]
     tick: RefCell<u32>,
     #[with(InlineRefCell)]
@@ -49,6 +52,8 @@ struct KernelA {
     add_queue: RefCell<Vec<ProcessContainer>>,
     #[with(InlineRefCell)]
     del_queue: RefCell<Vec<u32>>,
+    #[with(InlineRefCell)]
+    cache: RefCell<SharedDataCache>,
 }
 
 impl KernelA {
@@ -62,6 +67,7 @@ impl KernelA {
             pid: RefCell::new(1),
             add_queue: RefCell::new(Vec::new()),
             del_queue: RefCell::new(Vec::new()),
+            cache: RefCell::new(SharedDataCache::A(0)),
         };
         // Start process with pid 1 (init+coordinator)
 
@@ -77,35 +83,70 @@ impl KernelA {
         // Run Pretick
         // Pass CPU limit to tick function
         // Perflog pretick - but also perflog stuff inside pretick (like the scheduler pretick)
-
+        let limit = self.get_cpu_limit();
+        perf!(2,
+            self.pretick();
+        );
+        perf!(3,
+            self.tick(limit.1);
+        );
+        perf!(4,
+            self.posttick();
+        );
     }
 
     // Soft limit then hard limit
     pub fn get_cpu_limit(&self) -> (f64, f64) {
-        let bucket=  game::cpu::bucket() as u32;
+        let bucket = game::cpu::bucket() as u32;
         if bucket > BUCKET_MAX {
             return (bucket as f64 * 0.05, 500f64);
         }
 
         if bucket < BUCKET_OK {
-            return (game::cpu::limit() as f64*0.2, game::cpu::limit() as f64*0.5)
+            return (
+                game::cpu::limit() as f64 * 0.2,
+                game::cpu::limit() as f64 * 0.5,
+            );
         }
 
         if bucket < BUCKET_MIN {
-            return (game::cpu::limit() as f64*0.1, game::cpu::limit() as f64*0.3)
+            return (
+                game::cpu::limit() as f64 * 0.1,
+                game::cpu::limit() as f64 * 0.3,
+            );
         }
 
-        return (game::cpu::limit() as f64*0.5, game::cpu::limit() as f64*0.9);
+        return (
+            game::cpu::limit() as f64 * 0.5,
+            game::cpu::limit() as f64 * 0.9,
+        );
     }
 
     pub fn pretick(&self) {
         // Prepare scheduler - calculate order
-
+        let borrow = &mut *self.scheduler.borrow_mut();
+        let scheduler = get_mut_scheduler(borrow);
+        scheduler.pretick();
     }
 
     pub fn tick(&self, limit: f64) {
+        let ran = &mut *self.ran_pids.borrow_mut();
+        let borrow = &mut *self.ipc.borrow_mut();
+        let ipc = get_mut_ipc(borrow);
+        let processes = &mut *self.processes.borrow_mut();
+        let borrow = &mut *self.scheduler.borrow_mut();
+        let scheduler = get_mut_scheduler(borrow);
         while limit > game::cpu::get_used() {
-
+            let pid = scheduler.run_next_process();
+            if let Some(process) = processes.get(&pid) {
+                let mut process = process.val.borrow_mut();
+                if game::cpu::get_used() + taskdata_get(process.get_ptype(), true) * 2f64 > limit {
+                } else {
+                    perf!(process.get_ptype(),
+                        let _ = (&mut *process).run(ipc, self, 0);
+                    );
+                }
+            }
         }
         //let mut process = process.as_ref().val.borrow_mut();
         // Quit if not enough budget
@@ -118,13 +159,10 @@ impl KernelA {
         //self.ran_pids.borrow_mut().insert(process.get_pid());
         //true
         // Give each process ipc, kernel, and some sort of cache/data store
-
     }
 
     pub fn posttick(&self) {
-        // Handle add queue
-        // Handle delete queue
-        // Keep a borrow for the scheduler - reborrowing is stupid and not efficient
+        // Delete, shift, then add (delete removes load, add removes load)
         let borrow = &mut *self.scheduler.borrow_mut();
         let scheduler = get_mut_scheduler(borrow);
         let processes = &mut *self.processes.borrow_mut();
@@ -132,14 +170,6 @@ impl KernelA {
         let del_queue = &mut *self.del_queue.borrow_mut();
         let borrow = &mut *self.ipc.borrow_mut();
         let ipc = get_mut_ipc(borrow);
-        while !add_queue.is_empty() {
-            let p = add_queue.pop();
-            if let Some(p) = p {
-                scheduler.spawn_process(&p);
-                let pid = p.val.borrow().get_pid();
-                processes.insert(pid, p);
-            }
-        }
         while !del_queue.is_empty() {
             let pid = del_queue.pop();
             if let Some(pid) = pid {
@@ -147,7 +177,7 @@ impl KernelA {
                 scheduler.kill_process(pid);
                 // Remove from ptable
                 if let Some(p) = processes.remove(&pid) {
-                    let p = p.val.borrow_mut();
+                    let mut p = p.val.borrow_mut();
                     for c in p.get_child_processes() {
                         // Schedule children to be killed
                         del_queue.push(c);
@@ -160,6 +190,15 @@ impl KernelA {
                 // Kill code (recursively to children also)
                 // Remove from scheduler
                 // Remove from IPC
+            }
+        }
+        scheduler.posttick(&mut *self.ran_pids.borrow_mut());
+        while !add_queue.is_empty() {
+            let p = add_queue.pop();
+            if let Some(p) = p {
+                scheduler.spawn_process(&p);
+                let pid = p.val.borrow().get_pid();
+                processes.insert(pid, p);
             }
         }
     }

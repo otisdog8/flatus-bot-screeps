@@ -1,4 +1,6 @@
-use crate::refcell_serialization::InlineRefCell;
+use crate::{
+    ipc::InterProcessCommunicationA, kernel::KernelA, refcell_serialization::InlineRefCell,
+};
 use bytecheck::CheckBytes;
 use rkyv::{
     archived_value,
@@ -14,13 +16,12 @@ use std::cell::RefCell;
     pub fn can_run(&self) -> bool {}
     pub fn get_pid(&self) -> u32 {}
     pub fn set_pid(&mut self, pid: u32) {}
-    pub fn get_prio(&mut self) -> u8 {}
+    pub fn get_prio(&self) -> u8 {}
     pub fn set_prio(&mut self, prio: u8) {}
     pub fn get_ptype(&self) -> u16 {}
-    pub fn kill(&self) {}
-    pub fn spawn_child_process(&self) {}
+    pub fn kill(&mut self) {}
     pub fn get_child_processes(&self) -> Vec<u32> {}
-    pub fn run(&mut self) -> u16 {}
+    pub fn run(&mut self, ipc: &mut InterProcessCommunicationA, kernel: &KernelA, cache: u32) -> u16 {}
 }]
 #[repr(u16)]
 pub enum Process {
@@ -84,12 +85,12 @@ impl TestProcessA {
         Vec::new()
     }
 
-    fn run(&mut self) -> u16 {
+    fn run(&mut self, ipc: &mut InterProcessCommunicationA, kernel: &KernelA, cache: u32) -> u16 {
         0
     }
 
     fn new() -> TestProcessA {
-        TestProcessA {pid: 0}
+        TestProcessA { pid: 0 }
     }
 }
 
