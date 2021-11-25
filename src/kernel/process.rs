@@ -1,5 +1,6 @@
 use crate::{
-    ipc::InterProcessCommunicationA, kernel::KernelA, refcell_serialization::InlineRefCell,
+    kernel::{ipc::InterProcessCommunicationA, kernel::KernelA},
+    refcell_serialization::InlineRefCell,
 };
 use bytecheck::CheckBytes;
 use rkyv::{
@@ -18,6 +19,8 @@ use std::cell::RefCell;
     pub fn set_pid(&mut self, pid: u32) {}
     pub fn get_prio(&self) -> u8 {}
     pub fn set_prio(&mut self, prio: u8) {}
+    pub fn get_parent(&self) -> u32 {}
+    pub fn set_parent(&mut self, parent: u32) {}
     pub fn get_ptype(&self) -> u16 {}
     pub fn kill(&mut self) {}
     pub fn get_child_processes(&self) -> Vec<u32> {}
@@ -70,6 +73,12 @@ impl TestProcessA {
     }
 
     fn set_prio(&mut self, prio: u8) {}
+
+    fn get_parent(&self) -> u32 {
+        0
+    }
+
+    fn set_parent(&mut self, parent: u32) {}
 
     fn get_ptype(&self) -> u16 {
         0

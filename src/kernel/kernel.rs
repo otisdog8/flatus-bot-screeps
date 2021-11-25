@@ -3,12 +3,12 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::{collections::HashMap, rc::Rc};
 
-use crate::ipc::{get_mut_ipc, new_ipc_as_enum, InterProcessCommunication};
+use crate::kernel::ipc::{get_mut_ipc, new_ipc_as_enum, InterProcessCommunication};
 use crate::perf;
 use crate::performance::taskdata_get;
-use crate::process::ProcessContainer;
+use crate::kernel::process::ProcessContainer;
 use crate::refcell_serialization::InlineRefCell;
-use crate::scheduler::{get_mut_scheduler, new_scheduler_as_enum, Scheduler};
+use crate::kernel::scheduler::{get_mut_scheduler, new_scheduler_as_enum, Scheduler};
 use crate::shared_data_cache::SharedDataCache;
 
 use bytecheck::CheckBytes;

@@ -18,14 +18,11 @@ use screeps::{
 use wasm_bindgen::prelude::*;
 
 mod game_cache;
-mod ipc;
 mod kernel;
 mod logging;
 mod memory;
 mod performance;
-mod process;
 mod refcell_serialization;
-mod scheduler;
 mod shared_data_cache;
 mod strlib;
 

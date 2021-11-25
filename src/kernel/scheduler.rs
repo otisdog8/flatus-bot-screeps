@@ -13,7 +13,7 @@ use std::{
 
 use crate::perf;
 use crate::refcell_serialization::InlineRefCell;
-use crate::{performance::taskdata_get, process::ProcessContainer};
+use crate::{performance::taskdata_get, kernel::process::ProcessContainer};
 
 use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
